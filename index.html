@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            padding: 40px 15px;
+        }
+
+        .chat-container {
+            background: white;
+            width: 400px;
+            max-width: 100%;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px #00000015;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        #status {
+            text-align: center;
+            color: #16803d;
+            margin-bottom: 18px;
+        }
+
+        input, button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 11px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 15px;
+        }
+
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #messages {
+            height: 280px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            overflow-wrap: anywhere;
+        }
+
+        .message {
+            background: #eef2ff;
+            padding: 9px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .time {
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <h2>💬 Chat Interface</h2>
+
+        <div id="status">Connecting...</div>
+
+        <input id="username" placeholder="Enter your username" value="Celia">
+
+        <div id="messages"></div>
+
+        <form id="chat-form">
+            <input id="message-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit">Send Message</button>
+        </form>
+    </div>
+
+    <script>
+        const status = document.getElementById("status");
+        const messages = document.getElementById("messages");
+        const usernameInput = document.getElementById("username");
+        const messageInput = document.getElementById("message-input");
+        const form = document.getElementById("chat-form");
+
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        const socket = new WebSocket(`${protocol}//${location.host}/ws`);
+
+        socket.onopen = function () {
+            status.textContent = "Connected ✓";
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const item = document.createElement("div");
+            item.className = "message";
+
+            if (data.error) {
+                item.textContent = data.error;
+            } else if (data.type === "pong") {
+                item.textContent = "Server: pong 🏓";
+            } else {
+                const heading = document.createElement("strong");
+                heading.textContent = data.username + ": ";
+
+                const content = document.createElement("span");
+                content.textContent = data.message;
+
+                const time = document.createElement("div");
+                time.className = "time";
+                time.textContent = data.time;
+
+                item.append(heading, content, time);
+            }
+
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight;
+        };
+
+        socket.onclose = function () {
+            status.textContent = "Disconnected";
+            status.style.color = "red";
+        };
+
+        socket.onerror = function () {
+            status.textContent = "Connection error";
+            status.style.color = "red";
+        };
+        
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const message = messageInput.value.trim();
+
+            if (!username || !message) {
+                return;
+            }
+
+            if (socket.readyState !== WebSocket.OPEN) {
+                status.textContent = "Not connected. Refresh the page.";
+                return;
+            }
+
+            socket.send(JSON.stringify({
+                username: username,
+                message: message
+            }));
+
+            messageInput.value = "";
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>
